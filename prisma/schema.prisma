@@ -10,11 +10,17 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model user {
+  id              Int       @id @default(autoincrement())
+  email           String
+  password        String
+}
+
 model products {
   id              Int       @id @default(autoincrement())
   productName     String
   quantity        Int
-  map             Int
+  mrp             Int
   discount        Int
   netRate         Int
   add             Int

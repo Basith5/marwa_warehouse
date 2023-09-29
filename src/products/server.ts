@@ -39,12 +39,27 @@ async function addProducts(req: Request, res: Response) {
           },
         });
       }
+
+      // Check if a product with the same productName already exists
+      const existingProduct = await prisma.products.findFirst({
+        where: {
+          productName: resultData.productName,
+        },
+      });
+    
+      if (existingProduct) {
+        return res.status(409).json({
+          error: {
+            message: "Product already exists.",
+          },
+        });
+      }
   
       const products = await prisma.products.create({
         data: {
           productName: resultData.productName,
           quantity: resultData.quantity,
-          map: resultData.map,
+          mrp: resultData.mrp,
           discount: resultData.discount,
           netRate: resultData.netRate,
           add: resultData.add,
@@ -168,8 +183,8 @@ async function editProduct(req: Request, res: Response) {
         updateFields.quantity = updatedData.quantity;
       }
   
-      if (updatedData.map !== undefined) {
-        updateFields.map = updatedData.map;
+      if (updatedData.mrp !== undefined) {
+        updateFields.mrp = updatedData.mrp;
       }
 
       if (updatedData.discount !== undefined) {

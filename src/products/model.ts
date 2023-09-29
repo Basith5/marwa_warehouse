@@ -1,9 +1,9 @@
 import { z } from "zod"
 
 export const productSchema = z.object({
-    productName: z.string({required_error: "productName mark is required", }),
+    productName: z.string({required_error: "productName is required", }),
     quantity: z.number({required_error: "quantity is required", }),
-    map: z.number({required_error: "map is required", }),
+    mrp: z.number({required_error: "mrp is required", }),
     discount: z.number({required_error: "discount is required", }),
     netRate: z.number({required_error: "netRate is required", }),
     add: z.number({required_error: "add is required", }),
@@ -12,9 +12,9 @@ export const productSchema = z.object({
 })
 
 export const editProductSchema = z.object({
-    productName: z.string({required_error: "productName mark is required", }).optional(),
+    productName: z.string({required_error: "productName is required", }).optional(),
     quantity: z.number({required_error: "quantity is required", }).optional(),
-    map: z.number({required_error: "map is required", }).optional(),
+    mrp: z.number({required_error: "mrp is required", }).optional(),
     discount: z.number({required_error: "discount is required", }).optional(),
     netRate: z.number({required_error: "netRate is required", }).optional(),
     add: z.number({required_error: "add is required", }).optional(),
