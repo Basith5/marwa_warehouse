@@ -92,48 +92,53 @@ async function addProducts(req: Request, res: Response) {
 //#region
 //get products
 async function getProducts(req: Request, res: Response) {
-    try {
-      const maxResult = parseInt(req.query.maxResult as string) || 8;
-      const productName = req.query.productName as string;
-  
-      const whereCondition = productName
-        ? {
-            productName: {
-              contains: productName,
-            },
-          }
-        : {};
-  
-      const products = await prisma.products.findMany({
-        take: maxResult,
-        where: whereCondition,
-      });
-  
-      const totalProductsCount = await prisma.products.count({
-        where: whereCondition,
-      });
-  
-      if (products.length === 0) {
-        return res.status(404).json({
-          error: {
-            message: "No products available.",
+  try {
+    const maxResult = parseInt(req.query.maxResult as string) || 8;
+    const productName = req.query.productName as string;
+
+    const whereCondition = productName
+      ? {
+          productName: {
+            contains: productName,
           },
-        });
-      }
-  
-      return res.json({
-        success: products,
-        totalProductsCount: totalProductsCount, 
-      });
-    } catch (error) {
-      console.error("An error occurred:", error);
-      return res.status(500).json({
+        }
+      : {};
+
+    const products = await prisma.products.findMany({
+      take: maxResult,
+      where: whereCondition,
+    });
+
+    const totalProductsCount = await prisma.products.count({
+      where: whereCondition,
+    });
+
+    if (products.length === 0) {
+      return res.status(404).json({
         error: {
-          message: "Internal server error",
+          message: "No products available.",
         },
       });
     }
+
+    // Calculate the total number of pages
+    const totalPages = Math.ceil(totalProductsCount / maxResult);
+
+    return res.json({
+      success: products,
+      totalProductsCount: totalProductsCount,
+      totalPages: totalPages, // Include the total number of pages in the response
+    });
+  } catch (error) {
+    console.error("An error occurred:", error);
+    return res.status(500).json({
+      error: {
+        message: "Internal server error",
+      },
+    });
+  }
 }
+
 //#endregion
 
 //#region
