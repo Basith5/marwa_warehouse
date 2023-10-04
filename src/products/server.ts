@@ -95,6 +95,7 @@ async function getProducts(req: Request, res: Response) {
   try {
     const maxResult = parseInt(req.query.maxResult as string) || 8;
     const productName = req.query.productName as string;
+    let page = parseInt(req.query.page as string) || 1;
 
     const whereCondition = productName
       ? {
@@ -104,30 +105,43 @@ async function getProducts(req: Request, res: Response) {
         }
       : {};
 
-    const products = await prisma.products.findMany({
-      take: maxResult,
+    const totalProductsCount = await prisma.products.count({
       where: whereCondition,
     });
 
-    const totalProductsCount = await prisma.products.count({
+    const totalPages = Math.ceil(totalProductsCount / maxResult);
+
+    if (page < 1) {
+      page = 1;
+    } else if (page > totalPages) {
+      return res.status(404).json({
+        error: {
+          message: "Page not found.",
+        },
+      });
+    }
+
+    const skipCount = (page - 1) * maxResult;
+
+    const products = await prisma.products.findMany({
+      take: maxResult,
+      skip: skipCount,
       where: whereCondition,
     });
 
     if (products.length === 0) {
       return res.status(404).json({
         error: {
-          message: "No products available.",
+          message: "No products available on this page.",
         },
       });
     }
 
-    // Calculate the total number of pages
-    const totalPages = Math.ceil(totalProductsCount / maxResult);
-
     return res.json({
       success: products,
       totalProductsCount: totalProductsCount,
-      totalPages: totalPages, // Include the total number of pages in the response
+      totalPages: totalPages,
+      currentPage: page,
     });
   } catch (error) {
     console.error("An error occurred:", error);
@@ -138,7 +152,6 @@ async function getProducts(req: Request, res: Response) {
     });
   }
 }
-
 //#endregion
 
 //#region

@@ -20,10 +20,28 @@ model products {
   id              Int       @id @default(autoincrement())
   productName     String
   quantity        Int
-  mrp             Int
-  discount        Int
-  netRate         Int
-  add             Int
-  saleRate        Int
+  mrp             Float
+  discount        Float
+  netRate         Float
+  add             Float
+  saleRate        Float
   category        String
+}
+
+model reports {
+  id              Int       @id @default(autoincrement())
+  paymentMethod   String
+  gst             Int
+  spl             Int
+  name            String
+  area            String
+  date            String
+  add             Float
+  category        String
+  discount        Float
+  mrp             Float
+  netRate         Float
+  productName     String
+  quantity        Int
+  saleRate        Float
 }
