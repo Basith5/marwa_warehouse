@@ -30,6 +30,7 @@ model products {
 
 model reports {
   id              Int       @id @default(autoincrement())
+  invoiceNumber   Int
   paymentMethod   String
   gst             Int
   spl             Int

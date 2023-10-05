@@ -76,72 +76,67 @@ reportRouter.get('/by', getReportsBy)
 //     }
 // }
 async function getReports(req: Request, res: Response) {
-  try {
+    try {
       const maxResult = parseInt(req.query.maxResult as string) || 10;
       const page = parseInt(req.query.page as string) || 1;
-      const date = req.query.date as string;
-      const searchName = req.query.name as string; // Add query parameter for name search
 
-      if (!date && !searchName) {
-          return res.status(400).json({
-              error: "date param or name param is missing",
-          });
-      }
+      const searchName = req.query.name as string;
+      
+      const currentDate = new Date().toISOString().split('T')[0];
 
-      // Define where condition to filter by date and name (if provided)
+      console.log(currentDate)
+  
       const whereCondition = {
-          ...(date && {
-              date: {
-                  equals: date,
-              },
-          }),
-          ...(searchName && {
-              name: {
-                  equals: searchName,
-              },
-          }),
+        date: {
+          equals: currentDate,
+        },
+        ...(searchName && {
+          name: {
+            equals: searchName,
+          },
+        }),
       };
-
-      // Fetch reports data with pagination and filtering by date and/or name
+  
       const reports = await prisma.reports.findMany({
-          where: whereCondition,
-          take: maxResult,
-          skip: (page - 1) * maxResult,
+        where: whereCondition,
+        take: maxResult,
+        skip: (page - 1) * maxResult,
       });
-
+  
       const totalReportsCount = await prisma.reports.count({
-          where: whereCondition,
+        where: whereCondition,
       });
-
+  
       if (reports.length === 0) {
-          return res.status(404).json({
-              error: {
-                  message: "No reports available for the given criteria.",
-              },
-          });
+        return res.status(404).json({
+          error: {
+            message: "No reports available for the given criteria.",
+          },
+        });
       }
-
+  
       const totalPages = Math.ceil(totalReportsCount / maxResult);
-
+  
       // Check if the requested page number is out of range
       if (page > totalPages) {
-          return res.status(404).json({
-              error: {
-                  message: "Page not found.",
-              },
-          });
+        return res.status(404).json({
+          error: {
+            message: "Page not found.",
+          },
+        });
       }
-
+  
       return res.json({
-          success: reports,
-          totalReportsCount,
-          totalPages,
+        success: reports,
+        totalReportsCount,
+        totalPages,
       });
-  } catch (error) {
+    } catch (error) {
       console.error("An error occurred:", error);
       return res.status(500).json({ error: "Internal server error." });
+    }
   }
-}
+  
 //#endregion
 
 //#region
@@ -255,7 +250,6 @@ async function getReportsBy(req: Request, res: Response) {
         });
     }
     
-
       return res.json({
           success: reports,
           totalReportsCount,

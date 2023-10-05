@@ -85,7 +85,7 @@ async function addProducts(req: Request, res: Response) {
         },
       });
     }
-  }
+}
   
 //#endregion
 
@@ -94,6 +94,7 @@ async function addProducts(req: Request, res: Response) {
 async function getProducts(req: Request, res: Response) {
   try {
     const maxResult = parseInt(req.query.maxResult as string) || 8;
+    console.log(maxResult);
     const productName = req.query.productName as string;
     let page = parseInt(req.query.page as string) || 1;
 

@@ -13,7 +13,6 @@ export const billingRouter = express.Router();
 billingRouter.post("/addBill", addBill);
 billingRouter.get("/getBill", getBillRequest);
 
-
 //#region
 //add bill 
 async function addBill(req: Request, res: Response) {
@@ -36,32 +35,47 @@ async function addBill(req: Request, res: Response) {
       return res.status(400).json({ error: 'Products must be an array.' });
     }
 
-    const mergedProducts = [];
+    // Fetch the last invoice number from the database
+    const lastInvoice = await prisma.reports.findFirst({
+      orderBy: {
+        invoiceNumber: 'desc',
+      },
+      select: {
+        invoiceNumber: true,
+      },
+    });
 
-    for (const product of products) {
-      const mergedProduct = {
-        ...state,
-        ...product,
-      };
-      mergedProducts.push(mergedProduct);
-    }
+    // Calculate the current invoice number
+    const currentInvoiceNumber = lastInvoice ? lastInvoice.invoiceNumber + 1 : 1;
 
     const successMessages = [];
     const errorMessages = [];
 
-    for (const mergedProduct of mergedProducts) {
+    for (const product of products) {
       const existingProduct = await prisma.products.findFirst({
         where: {
-          productName: mergedProduct.productName,
+          productName: product.productName,
         },
       });
 
       if (existingProduct) {
-        const updatedQuantity = existingProduct.quantity - mergedProduct.quantity;
+        const updatedQuantity = existingProduct.quantity - product.quantity;
 
         if (updatedQuantity < 0) {
-          errorMessages.push(`Product ${mergedProduct.productName} out of stock`);
+          errorMessages.push(`Product ${product.productName} out of stock`);
         } else {
+          // Only create the report entry if the product exists and has sufficient stock
+          const mergedProduct = {
+            ...state,
+            ...product,
+            invoiceNumber: currentInvoiceNumber,
+          };
+
+          await prisma.reports.create({
+            data: mergedProduct,
+          });
+
+          // Update the product quantity in the database
           await prisma.products.update({
             where: {
               id: existingProduct.id,
@@ -71,27 +85,23 @@ async function addBill(req: Request, res: Response) {
             },
           });
 
-          successMessages.push(`Product ${mergedProduct.productName} updated. New quantity: ${updatedQuantity}`);
+          successMessages.push(`Product ${product.productName} updated. New quantity: ${updatedQuantity}`);
         }
       } else {
-        errorMessages.push(`Product ${mergedProduct.productName} not found in the products. Skipped.`);
+        errorMessages.push(`Product ${product.productName} not found in the products. Skipped.`);
       }
     }
-
-    const createdReports = await prisma.reports.createMany({
-      data: mergedProducts,
-    });
 
     if (errorMessages.length === 0) {
       return res.json({
         success: successMessages,
-        createdReports,
+        invoiceNumber: currentInvoiceNumber,
       });
     } else {
       return res.status(400).json({
         errors: errorMessages,
         success: successMessages,
-        createdReports,
+        invoiceNumber: currentInvoiceNumber,
       });
     }
   } catch (error) {
@@ -99,6 +109,8 @@ async function addBill(req: Request, res: Response) {
     return res.status(500).json({ error: 'Internal server error.' });
   }
 }
+
+
 //#endregion
 
 //#region
@@ -106,14 +118,10 @@ async function addBill(req: Request, res: Response) {
 async function getBillRequest(req: Request, res: Response) {
     try {
         const question = req.query.question as string;
-        const page = parseInt(req.query.page as string) || 1; 
-        const maxResult = parseInt(req.query.maxResult as string) || 8;
 
         if (!question) {
             return res.status(400).json({ error: 'Question parameter is required.' });
         }
-
-        const skip = (page - 1) * maxResult;
 
         const products = await prisma.products.findMany({
             where: {
@@ -121,8 +129,6 @@ async function getBillRequest(req: Request, res: Response) {
                     contains: question,
                 },
             },
-            skip, 
-            take: maxResult,
         });
 
         if (products.length === 0) {
