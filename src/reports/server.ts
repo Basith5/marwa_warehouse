@@ -11,9 +11,98 @@ export const reportRouter = express.Router();
 reportRouter.get("/", getReport);
 reportRouter.get("/by", getReportsBy);
 reportRouter.get("/products", getProductsReports);
+reportRouter.get("/byName", getByName);
+
 
 
 //complete - 1
+// async function getReport(req: Request, res: Response) {
+//   try {
+//     const maxResult = parseInt(req.query.maxResult as string) || 10;
+//     const page = parseInt(req.query.page as string) || 1;
+//     const searchName = req.query.name as string;
+
+//     const currentDate = new Date().toISOString().split("T")[0];
+//     const formattedDate = currentDate.split("-").reverse().join("-");
+
+//     console.log(formattedDate);
+
+//     const whereCondition = {
+//       date: {
+//         equals: formattedDate,
+//       },
+//       ...(searchName && {
+//         name: {
+//           equals: searchName,
+//         },
+//       }),
+//     };
+
+//     const reports = await prisma.reports.findMany({
+//       select: {
+//         id: true,
+//         invoiceNumber: true,
+//         paymentMethod: true,
+//         gst: true,
+//         spl: true,
+//         name: true,
+//         date: true
+//       },
+//       where: whereCondition,
+//       take: maxResult,
+//       skip: (page - 1) * maxResult,
+//     });
+
+//     const totalReportsCount = await prisma.reports.count({
+//       where: whereCondition,
+//     });
+
+//         // Count reports by invoice number
+//         const countByInvoiceNumber = await prisma.reports.groupBy({
+//           by: ["invoiceNumber"],
+//           _count: {
+//             _all: true,
+//           },
+//           where: whereCondition,
+//         });
+    
+//     if (reports.length === 0) {
+//       return res.status(404).json({
+//         error: {
+//           message: "No reports available for the given criteria.",
+//         },
+//       });
+//     }
+
+//     const totalPages = Math.ceil(totalReportsCount / maxResult);
+
+//     // Check if the requested page number is out of range
+//     if (page > totalPages) {
+//       return res.status(404).json({
+//         error: {
+//           message: "Page not found.",
+//         },
+//       });
+//     }
+
+//   // Assuming countByInvoiceNumber is an array of objects with "_count" and "invoiceNumber" properties
+//   const countByInvoiceNumberFormatted = countByInvoiceNumber.map((item) => ({
+//     invoiceNumber: item.invoiceNumber,
+//     totalProduct: item._count._all,
+//   }));
+
+//   return res.json({
+//     success: reports,
+//     totalReportsCount,
+//     totalPages,
+//     countByInvoiceNumber: countByInvoiceNumberFormatted,
+//   });
+
+//   } catch (error) {
+//     console.error("An error occurred:", error);
+//     return res.status(500).json({ error: "Internal server error." });
+//   }
+// }
 async function getReport(req: Request, res: Response) {
   try {
     const maxResult = parseInt(req.query.maxResult as string) || 10;
@@ -23,7 +112,7 @@ async function getReport(req: Request, res: Response) {
     const currentDate = new Date().toISOString().split("T")[0];
     const formattedDate = currentDate.split("-").reverse().join("-");
 
-    console.log(formattedDate);
+    //console.log(formattedDate);
 
     const whereCondition = {
       date: {
@@ -55,15 +144,15 @@ async function getReport(req: Request, res: Response) {
       where: whereCondition,
     });
 
-        // Count reports by invoice number
-        const countByInvoiceNumber = await prisma.reports.groupBy({
-          by: ["invoiceNumber"],
-          _count: {
-            _all: true,
-          },
-          where: whereCondition,
-        });
-    
+    // Count reports by invoice number
+    const countByInvoiceNumber = await prisma.reports.groupBy({
+      by: ["invoiceNumber"],
+      _count: {
+        _all: true,
+      },
+      where: whereCondition,
+    });
+
     if (reports.length === 0) {
       return res.status(404).json({
         error: {
@@ -83,24 +172,20 @@ async function getReport(req: Request, res: Response) {
       });
     }
 
-  // Assuming countByInvoiceNumber is an array of objects with "_count" and "invoiceNumber" properties
-  const countByInvoiceNumberFormatted = countByInvoiceNumber.map((item) => ({
-    invoiceNumber: item.invoiceNumber,
-    totalProduct: item._count._all,
-  }));
-
-  return res.json({
-    success: reports,
-    totalReportsCount,
-    totalPages,
-    countByInvoiceNumber: countByInvoiceNumberFormatted,
-  });
-
+    // Include the current page in the response
+    return res.json({
+      success: reports,
+      totalReportsCount,
+      totalPages,
+      currentPage: page, // Add current page to the response
+      countByInvoiceNumber: countByInvoiceNumber,
+    });
   } catch (error) {
     console.error("An error occurred:", error);
     return res.status(500).json({ error: "Internal server error." });
   }
 }
+
 
 //getProductsReports - 2 and 4
 async function getProductsReports(req: Request, res: Response) {
@@ -120,14 +205,6 @@ async function getProductsReports(req: Request, res: Response) {
     };
 
     const reports = await prisma.reports.findMany({
-      // select: {
-      //   id: true,
-      //   invoiceNumber: true,
-      //   paymentMethod: true,
-      //   gst: true,
-      //   spl: true,
-      //   name: true,
-      // },
       where: whereCondition,
       take: maxResult,
       skip: (page - 1) * maxResult,
@@ -167,6 +244,68 @@ async function getProductsReports(req: Request, res: Response) {
     return res.status(500).json({ error: "Internal server error." });
   }
 }
+
+//getByName
+async function getByName(req: Request, res: Response) {
+  try {
+    const question = req.query.question as string;
+    const currentPage = parseInt(req.query.currentPage as string) || 1;
+    const maxResult = parseInt(req.query.maxResult as string) || 10;
+
+    if (!question) {
+      return res.status(400).json({
+        error: "question parameter is required.",
+      });
+    }
+
+    const skip = (currentPage - 1) * maxResult;
+
+    const totalProducts = await prisma.reports.count({
+      where: {
+        name: question,
+      },
+    });
+
+    const products = await prisma.reports.findMany({
+      where: {
+        name: question,
+      },
+      select: {
+        id: true,
+        invoiceNumber: true,
+        paymentMethod: true,
+        gst: true,
+        spl: true,
+        name: true,
+      },
+      take: maxResult,
+      skip: skip,
+    });
+
+    const totalProduct = await prisma.reports.count({
+      where: {
+        name: question,
+      },
+    });
+    
+    if (totalProducts === 0) {
+      return res.status(404).json({
+        message: "No products found for the provided name.",
+      });
+    }
+
+    return res.json({
+      success: products,
+      totalProducts: totalProducts,
+      currentPage: currentPage,
+    });
+
+  } catch (error) {
+    console.error("An error occurred:", error);
+    return res.status(500).json({ error: "Internal server error." });
+  }
+}
+
 
 
 //#region
@@ -477,6 +616,4 @@ async function getReportsBy(req: Request, res: Response) {
     return res.status(500).json({ error: "Internal server error." });
   }
 }
-
-
 //#endregion
