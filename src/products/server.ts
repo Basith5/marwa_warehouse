@@ -11,6 +11,7 @@ export const productRouter = express.Router();
 //Routes
 productRouter.post("/addProducts", addProducts);
 productRouter.get("/getProducts", getProducts);
+productRouter.get("/getProductBySearch", getProductBySearch);
 productRouter.post('/editProducts/:id', editProduct);
 productRouter.delete("/deleteProducts/:id", deleteProducts);
 
@@ -62,8 +63,6 @@ async function addProducts(req: Request, res: Response) {
           mrp: resultData.mrp,
           discount: resultData.discount,
           netRate: resultData.netRate,
-          add: resultData.add,
-          saleRate: resultData.saleRate,
           category: resultData.category,
         },
       });
@@ -156,6 +155,51 @@ async function getProducts(req: Request, res: Response) {
 //#endregion
 
 //#region
+async function getProductBySearch(req: Request, res: Response) {
+  try {
+    
+    const question = req.query.question as string;
+    
+    const whereCondition = question
+      ? {
+          productName: {
+            contains: question,
+          },
+        }
+      : {};
+
+    const totalProductsCount = await prisma.products.count({
+      where: whereCondition,
+    });
+
+    const products = await prisma.products.findMany({
+      where: whereCondition,
+    });
+
+    if (products.length === 0) {
+      return res.status(404).json({
+        error: {
+          message: "No products available on this page.",
+        },
+      });
+    }
+
+    return res.json({
+      success: products,
+      totalProductsCount: totalProductsCount,
+    });
+  } catch (error) {
+    console.error("An error occurred:", error);
+    return res.status(500).json({
+      error: {
+        message: "Internal server error",
+      },
+    });
+  }
+}
+//#endregion
+
+//#region
 //Edit products api
 async function editProduct(req: Request, res: Response) {
     try {
@@ -212,14 +256,6 @@ async function editProduct(req: Request, res: Response) {
 
       if (updatedData.netRate !== undefined) {
         updateFields.netRate = updatedData.netRate;
-      }
-
-      if (updatedData.add !== undefined) {
-        updateFields.add = updatedData.add;
-      }
-
-      if (updatedData.saleRate !== undefined) {
-        updateFields.saleRate = updatedData.saleRate;
       }
 
       if (updatedData.category !== undefined) {
@@ -282,4 +318,5 @@ async function deleteProducts(req: Request, res: Response) {
     }
   }
 //#endregion
+
 

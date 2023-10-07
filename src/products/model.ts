@@ -6,8 +6,6 @@ export const productSchema = z.object({
     mrp: z.number({required_error: "mrp is required", }),
     discount: z.number({required_error: "discount is required", }),
     netRate: z.number({required_error: "netRate is required", }),
-    add: z.number({required_error: "add is required", }),
-    saleRate: z.number({required_error: "saleRate is required", }),
     category: z.string({required_error: "category is required", })
 })
 
@@ -17,8 +15,6 @@ export const editProductSchema = z.object({
     mrp: z.number({required_error: "mrp is required", }).optional(),
     discount: z.number({required_error: "discount is required", }).optional(),
     netRate: z.number({required_error: "netRate is required", }).optional(),
-    add: z.number({required_error: "add is required", }).optional(),
-    saleRate: z.number({required_error: "saleRate is required", }).optional(),
     category: z.string({required_error: "category is required", }).optional()
 })
 

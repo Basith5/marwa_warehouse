@@ -23,8 +23,6 @@ model products {
   mrp             Float
   discount        Float
   netRate         Float
-  add             Float
-  saleRate        Float
   category        String
 }
 
@@ -37,12 +35,10 @@ model reports {
   name            String
   area            String
   date            String
-  add             Float
   category        String
   discount        Float
   mrp             Float
   netRate         Float
   productName     String
   quantity        Int
-  saleRate        Float
 }
