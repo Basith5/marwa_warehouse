@@ -10,9 +10,10 @@ export const reportRouter = express.Router();
 //route
 reportRouter.get("/", getReport);
 reportRouter.get("/by", getReportsBy);
+reportRouter.get("/products", getProductsReports);
 
 
-//complete
+//complete - 1
 async function getReport(req: Request, res: Response) {
   try {
     const maxResult = parseInt(req.query.maxResult as string) || 10;
@@ -43,6 +44,7 @@ async function getReport(req: Request, res: Response) {
         gst: true,
         spl: true,
         name: true,
+        date: true
       },
       where: whereCondition,
       take: maxResult,
@@ -93,6 +95,72 @@ async function getReport(req: Request, res: Response) {
     totalPages,
     countByInvoiceNumber: countByInvoiceNumberFormatted,
   });
+
+  } catch (error) {
+    console.error("An error occurred:", error);
+    return res.status(500).json({ error: "Internal server error." });
+  }
+}
+
+//getProductsReports - 2 and 4
+async function getProductsReports(req: Request, res: Response) {
+  try {
+    const maxResult = parseInt(req.query.maxResult as string) || 10;
+    const page = parseInt(req.query.page as string) || 1;
+    const invoiceNumber = parseInt(req.query.invoiceNumber as string);
+
+    if (isNaN(invoiceNumber)) {
+      return res.status(400).json({
+        error: "Invalid invoiceNumber. Please provide a valid invoiceNumber.",
+      });
+    }
+
+    const whereCondition: any = {
+      invoiceNumber: invoiceNumber, // Filter by invoice number
+    };
+
+    const reports = await prisma.reports.findMany({
+      // select: {
+      //   id: true,
+      //   invoiceNumber: true,
+      //   paymentMethod: true,
+      //   gst: true,
+      //   spl: true,
+      //   name: true,
+      // },
+      where: whereCondition,
+      take: maxResult,
+      skip: (page - 1) * maxResult,
+    });
+
+    const totalReportsCount = await prisma.reports.count({
+      where: whereCondition,
+    });
+
+    if (reports.length === 0) {
+      return res.status(404).json({
+        error: {
+          message: "No reports available for the given invoice number.",
+        },
+      });
+    }
+
+    const totalPages = Math.ceil(totalReportsCount / maxResult);
+
+    // Check if the requested page number is out of range
+    if (page > totalPages) {
+      return res.status(404).json({
+        error: {
+          message: "Page not found.",
+        },
+      });
+    }
+
+    return res.json({
+      success: reports,
+      totalReportsCount,
+      totalPages,
+    });
 
   } catch (error) {
     console.error("An error occurred:", error);
@@ -310,7 +378,7 @@ async function getReports(req: Request, res: Response) {
 //   }
 // }
 
-//complete
+//complete - 1
 async function getReportsBy(req: Request, res: Response) {
   try {
     const maxResult = parseInt(req.query.maxResult as string) || 10; // Number of results per page
@@ -409,4 +477,6 @@ async function getReportsBy(req: Request, res: Response) {
     return res.status(500).json({ error: "Internal server error." });
   }
 }
+
+
 //#endregion
