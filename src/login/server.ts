@@ -1,15 +1,16 @@
 import express, { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import jwt from 'jsonwebtoken';
-import bcrypt from 'bcrypt';
 import { userData, userSchema } from './model';
 import { fromZodError } from 'zod-validation-error';
 
 const prisma = new PrismaClient();
 export const loginRouter = express.Router();
 
+//routes
 loginRouter.post('/login', userLogin)
 
+//#region
 //user check
 async function userLogin(req: Request, res: Response) {
     try {
@@ -34,7 +35,6 @@ async function userLogin(req: Request, res: Response) {
         });
       }
     
-        // Find the user by email in the database
         const user = await prisma.user.findFirst({
           where: {
             email: resultData.email,
@@ -46,7 +46,6 @@ async function userLogin(req: Request, res: Response) {
           return res.status(401).json({ error: 'Email or password is incorrect.' });
         }
     
-        // Generate a JWT token for authentication
         const token = jwt.sign(
           {
             userId: user.id,
@@ -62,7 +61,7 @@ async function userLogin(req: Request, res: Response) {
         })
     
       } catch (error) {
-        console.error('An error occurred:', error);
         res.status(500).json({ error: 'Internal server error.' });
       }
 }
+//#endregion

@@ -1,7 +1,6 @@
-import express, { Request, Response, response } from 'express';
-import { PrismaClient, Prisma } from '@prisma/client';
+import express, { Request, Response } from 'express';
+import { PrismaClient } from '@prisma/client';
 import { fromZodError } from "zod-validation-error"
-import { ZodError, object } from 'zod';
 import { editProductData, editProductSchema, productData, productSchema } from './model';
 
 const prisma = new PrismaClient();
@@ -14,7 +13,6 @@ productRouter.get("/getProducts", getProducts);
 productRouter.get("/getProductBySearch", getProductBySearch);
 productRouter.post('/editProducts/:id', editProduct);
 productRouter.delete("/deleteProducts/:id", deleteProducts);
-
 
 //#region
 //add products api route
@@ -41,7 +39,6 @@ async function addProducts(req: Request, res: Response) {
         });
       }
 
-      // Check if a product with the same productName already exists
       const existingProduct = await prisma.products.findFirst({
         where: {
           productName: resultData.productName,
@@ -77,15 +74,13 @@ async function addProducts(req: Request, res: Response) {
         success: "Products Added Successfully",
       });
     } catch (error) {
-      console.error("An error occurred:", error);
       return res.status(500).json({
         error: {
           message: "Internal server error",
         },
       });
     }
-}
-  
+} 
 //#endregion
 
 //#region
@@ -93,7 +88,6 @@ async function addProducts(req: Request, res: Response) {
 async function getProducts(req: Request, res: Response) {
   try {
     const maxResult = parseInt(req.query.maxResult as string) || 8;
-    console.log(maxResult);
     const productName = req.query.productName as string;
     let page = parseInt(req.query.page as string) || 1;
 
@@ -144,7 +138,6 @@ async function getProducts(req: Request, res: Response) {
       currentPage: page,
     });
   } catch (error) {
-    console.error("An error occurred:", error);
     return res.status(500).json({
       error: {
         message: "Internal server error",
@@ -189,7 +182,6 @@ async function getProductBySearch(req: Request, res: Response) {
       totalProductsCount: totalProductsCount,
     });
   } catch (error) {
-    console.error("An error occurred:", error);
     return res.status(500).json({
       error: {
         message: "Internal server error",
@@ -275,7 +267,6 @@ async function editProduct(req: Request, res: Response) {
       });
 
     } catch (error) {
-      console.error("An error occurred:", error);
       return res.status(500).json({
         error: "Internal server error",
       });
@@ -311,12 +302,9 @@ async function deleteProducts(req: Request, res: Response) {
         success: "Product deleted successfully.",
       });
     } catch (error) {
-      console.error("An error occurred:", error);
       return res.status(500).json({
         error: "Internal server error",
       });
     }
   }
 //#endregion
-
-

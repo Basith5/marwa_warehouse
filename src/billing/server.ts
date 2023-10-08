@@ -1,9 +1,6 @@
-import express, { Request, Response, response } from 'express';
-import { PrismaClient, Prisma } from '@prisma/client';
-import { fromZodError } from "zod-validation-error"
-import { ZodError, object } from 'zod';
+import express, { Request, Response } from 'express';
+import { PrismaClient } from '@prisma/client';
 import { validationResult } from 'express-validator';
-
 
 const prisma = new PrismaClient();
 
@@ -15,100 +12,6 @@ billingRouter.get("/getBill", getBillRequest);
 
 //#region
 //add bill 
-// async function addBill(req: Request, res: Response) {
-//   try {
-//     const state = req.body.State;
-//     const products = req.body.Products;
-
-//     if (!state || !products) {
-//       return res.json({
-//         error: "Missing params required"
-//       });
-//     }
-
-//     const errors = validationResult(req);
-//     if (!errors.isEmpty()) {
-//       return res.status(400).json({ errors: errors.array() });
-//     }
-
-//     if (!Array.isArray(products)) {
-//       return res.status(400).json({ error: 'Products must be an array.' });
-//     }
-
-//     // Fetch the last invoice number from the database
-//     const lastInvoice = await prisma.reports.findFirst({
-//       orderBy: {
-//         invoiceNumber: 'desc',
-//       },
-//       select: {
-//         invoiceNumber: true,
-//       },
-//     });
-
-//     // Calculate the current invoice number
-//     const currentInvoiceNumber = lastInvoice ? lastInvoice.invoiceNumber + 1 : 1;
-
-//     const successMessages = [];
-//     const errorMessages = [];
-
-//     for (const product of products) {
-//       const existingProduct = await prisma.products.findFirst({
-//         where: {
-//           productName: product.productName,
-//         },
-//       });
-
-//       if (existingProduct) {
-//         const updatedQuantity = existingProduct.quantity - product.quantity;
-
-//         if (updatedQuantity < 0) {
-//           errorMessages.push(`Product ${product.productName} out of stock`);
-//         } else {
-//           // Only create the report entry if the product exists and has sufficient stock
-//           const mergedProduct = {
-//             ...state,
-//             ...product,
-//             invoiceNumber: currentInvoiceNumber,
-//           };
-
-//           await prisma.reports.create({
-//             data: mergedProduct,
-//           });
-
-//           // Update the product quantity in the database
-//           await prisma.products.update({
-//             where: {
-//               id: existingProduct.id,
-//             },
-//             data: {
-//               quantity: updatedQuantity,
-//             },
-//           });
-
-//           successMessages.push(`Product ${product.productName} updated. New quantity: ${updatedQuantity}`);
-//         }
-//       } else {
-//         errorMessages.push(`Product ${product.productName} not found in the products. Skipped.`);
-//       }
-//     }
-
-//     if (errorMessages.length === 0) {
-//       return res.json({
-//         success: successMessages,
-//         invoiceNumber: currentInvoiceNumber,
-//       });
-//     } else {
-//       return res.status(400).json({
-//         errors: errorMessages,
-//         success: successMessages,
-//         invoiceNumber: currentInvoiceNumber,
-//       });
-//     }
-//   } catch (error) {
-//     console.error('An error occurred:', error);
-//     return res.status(500).json({ error: 'Internal server error.' });
-//   }
-// }
 async function addBill(req: Request, res: Response) {
   try {
     const state = req.body.State;
@@ -129,7 +32,6 @@ async function addBill(req: Request, res: Response) {
       return res.status(400).json({ error: 'Products must be an array.' });
     }
 
-    // Fetch the last invoice number from the database
     const lastInvoice = await prisma.reports.findFirst({
       orderBy: {
         invoiceNumber: 'desc',
@@ -139,12 +41,11 @@ async function addBill(req: Request, res: Response) {
       },
     });
 
-    // Calculate the current invoice number
     const currentInvoiceNumber = lastInvoice ? lastInvoice.invoiceNumber + 1 : 1;
 
     const errorMessages = [];
-    let outOfStockOccurred = false; // Flag to track if out of stock occurred
-    let productNotFoundOccurred = false; // Flag to track if product not found occurred
+    let outOfStockOccurred = false;
+    let productNotFoundOccurred = false;
 
     for (const product of products) {
       const existingProduct = await prisma.products.findFirst({
@@ -159,13 +60,19 @@ async function addBill(req: Request, res: Response) {
         if (updatedQuantity < 0) {
           if (!outOfStockOccurred) {
             errorMessages.push('Some products are out of stock.');
-            outOfStockOccurred = true; // Set the flag to true
+            outOfStockOccurred = true;
           }
         } else {
-          // Only create the report entry if the product exists and has sufficient stock
           const mergedProduct = {
             ...state,
-            ...product,
+            productName: product.productName,
+            quantity: product.quantity,
+            mrp: product.mrp,
+            discount: product.discount,
+            netRate: product.netRate,
+            add: product.add,
+            saleRate: product.saleRate,
+            category: product.category,
             invoiceNumber: currentInvoiceNumber,
           };
 
@@ -173,7 +80,6 @@ async function addBill(req: Request, res: Response) {
             data: mergedProduct,
           });
 
-          // Update the product quantity in the database
           await prisma.products.update({
             where: {
               id: existingProduct.id,
@@ -186,7 +92,7 @@ async function addBill(req: Request, res: Response) {
       } else {
         if (!productNotFoundOccurred) {
           errorMessages.push('Some products were not found in the products. Skipped.');
-          productNotFoundOccurred = true; // Set the flag to true
+          productNotFoundOccurred = true;
         }
       }
     }
@@ -203,12 +109,9 @@ async function addBill(req: Request, res: Response) {
       });
     }
   } catch (error) {
-    console.error('An error occurred:', error);
     return res.status(500).json({ error: 'Internal server error.' });
   }
 }
-
-
 //#endregion
 
 //#region
@@ -235,9 +138,7 @@ async function getBillRequest(req: Request, res: Response) {
 
         return res.json({ success: products });
     } catch (error) {
-        console.error('An error occurred:', error);
         return res.status(500).json({ error: 'Internal server error.' });
     }
 }
 //#endregion
-

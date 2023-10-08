@@ -1,7 +1,5 @@
-import express, { Request, Response, response } from "express";
-import { PrismaClient, Prisma } from "@prisma/client";
-import { fromZodError } from "zod-validation-error";
-import { ZodError, object } from "zod";
+import express, { Request, Response } from "express";
+import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -20,29 +18,19 @@ async function getReport(req: Request, res: Response) {
   try {
     const maxResult = parseInt(req.query.maxResult as string) || 10;
     const page = parseInt(req.query.page as string) || 1;
-    // const searchName = req.query.name as string;
-
     const currentDate = new Date().toISOString().split("T")[0];
     const formattedDate = currentDate.split("-").reverse().join("-");
-
-    // console.log(formattedDate);
 
     const whereCondition = {
       date: {
         equals: formattedDate,
       },
-      // ...(searchName && {
-      //   name: {
-      //     contains: searchName,
-      //   },
-      // }),
     };
 
     const totalReportsCount = await prisma.reports.count({
       where: whereCondition,
     });
 
-    // Count reports by invoice number and get the first product for each invoice
     const countByInvoiceNumber = await prisma.reports.groupBy({
       by: ["invoiceNumber"],
       _count: {
@@ -50,14 +38,12 @@ async function getReport(req: Request, res: Response) {
       },
       where: whereCondition,
       _min: {
-        id: true, // Use _min to get the minimum id for each invoice
+        id: true,
       },
     });
 
-    // Get the distinct invoice numbers
     const distinctInvoiceNumbers = countByInvoiceNumber.map((item) => item.invoiceNumber);
 
-    // Retrieve the first product for each distinct invoice number
     const firstProductsByInvoice = await Promise.all(
       distinctInvoiceNumbers.map(async (invoiceNumber) => {
         const firstProduct = await prisma.reports.findFirst({
@@ -76,13 +62,12 @@ async function getReport(req: Request, res: Response) {
         });
         return {
           invoiceNumber: invoiceNumber,
-          _count: countByInvoiceNumber.find((item) => item.invoiceNumber === invoiceNumber)?._count._all || 0, // Handle possibly undefined value
+          _count: countByInvoiceNumber.find((item) => item.invoiceNumber === invoiceNumber)?._count._all || 0,
           firstProduct: firstProduct,
         };
       })
     );
 
-    // Paginate the results
     const startIndex = (page - 1) * maxResult;
     const endIndex = startIndex + maxResult;
     const paginatedFirstProducts = firstProductsByInvoice.slice(startIndex, endIndex);
@@ -97,7 +82,6 @@ async function getReport(req: Request, res: Response) {
 
     const totalPages = Math.ceil(totalReportsCount / maxResult);
 
-    // Check if the requested page number is out of range
     if (page > totalPages) {
       return res.status(404).json({
         error: {
@@ -114,7 +98,6 @@ async function getReport(req: Request, res: Response) {
           where: whereCondition,
         });
 
-    // Include the current page in the response
     return res.json({
       success: paginatedFirstProducts,
       totalReportsCount,
@@ -123,21 +106,19 @@ async function getReport(req: Request, res: Response) {
       countByInvoiceNumbers
     });
   } catch (error) {
-    console.error("An error occurred:", error);
     return res.status(500).json({ error: "Internal server error." });
   }
 }
 //#endregion
 
 //#region
-//complete - 1
+//getReportsBy
 async function getReportsBy(req: Request, res: Response) {
   try {
     const maxResult = parseInt(req.query.maxResult as string) || 10;
     const page = parseInt(req.query.page as string) || 1;
     const startDate = req.query.startDate as string;
     const endDate = req.query.endDate as string;
-    const searchName = req.query.name as string;
 
     if (!startDate || !endDate) {
       return res.json({
@@ -153,33 +134,25 @@ async function getReportsBy(req: Request, res: Response) {
         gte: formattedStartDate,
         lte: formattedEndDate,
       },
-      ...(searchName && {
-        name: {
-          equals: searchName,
-        },
-      }),
     };
 
     const totalReportsCount = await prisma.reports.count({
       where: whereCondition,
     });
 
-     // Count reports by invoice number and get the first product for each invoice
-     const countByInvoiceNumber = await prisma.reports.groupBy({
-       by: ["invoiceNumber"],
-       _count: {
-         _all: true,
-       },
-       where: whereCondition,
-       _min: {
-         id: true, // Use _min to get the minimum id for each invoice
-       },
-     });
+    const countByInvoiceNumber = await prisma.reports.groupBy({
+      by: ["invoiceNumber"],
+      _count: {
+        _all: true,
+      },
+      where: whereCondition,
+      _min: {
+        id: true,
+      },
+    });
 
-    // Get the distinct invoice numbers
     const distinctInvoiceNumbers = countByInvoiceNumber.map((item) => item.invoiceNumber);
 
-    // Retrieve the first product for each distinct invoice number
     const firstProductsByInvoice = await Promise.all(
       distinctInvoiceNumbers.map(async (invoiceNumber) => {
         const firstProduct = await prisma.reports.findFirst({
@@ -204,7 +177,6 @@ async function getReportsBy(req: Request, res: Response) {
       })
     );
 
-    // Paginate the results
     const startIndex = (page - 1) * maxResult;
     const endIndex = startIndex + maxResult;
     const paginatedFirstProducts = firstProductsByInvoice.slice(startIndex, endIndex);
@@ -219,7 +191,6 @@ async function getReportsBy(req: Request, res: Response) {
 
     const totalPages = Math.ceil(totalReportsCount / maxResult);
 
-    // Check if the requested page number is out of range
     if (page > totalPages) {
       return res.status(404).json({
         error: {
@@ -228,15 +199,14 @@ async function getReportsBy(req: Request, res: Response) {
       });
     }
 
-        const countByInvoiceNumbers = await prisma.reports.groupBy({
-          by: ["invoiceNumber"],
-          _count: {
-            _all: true,
-          },
-          where: whereCondition,
-        });
+    const countByInvoiceNumbers = await prisma.reports.groupBy({
+      by: ["invoiceNumber"],
+      _count: {
+        _all: true,
+      },
+      where: whereCondition,
+    });
 
-    // Include the current page in the response
     return res.json({
       success: paginatedFirstProducts,
       totalReportsCount,
@@ -245,7 +215,6 @@ async function getReportsBy(req: Request, res: Response) {
       countByInvoiceNumbers
     });
   } catch (error) {
-    console.error("An error occurred:", error);
     return res.status(500).json({ error: "Internal server error." });
   }
 }
@@ -266,7 +235,7 @@ async function getProductsReports(req: Request, res: Response) {
     }
 
     const whereCondition: any = {
-      invoiceNumber: invoiceNumber, // Filter by invoice number
+      invoiceNumber: invoiceNumber,
     };
 
     const reports = await prisma.reports.findMany({
@@ -289,7 +258,6 @@ async function getProductsReports(req: Request, res: Response) {
 
     const totalPages = Math.ceil(totalReportsCount / maxResult);
 
-    // Check if the requested page number is out of range
     if (page > totalPages) {
       return res.status(404).json({
         error: {
@@ -305,7 +273,6 @@ async function getProductsReports(req: Request, res: Response) {
     });
 
   } catch (error) {
-    console.error("An error occurred:", error);
     return res.status(500).json({ error: "Internal server error." });
   }
 }
@@ -327,32 +294,12 @@ async function getByName(req: Request, res: Response) {
 
     const skip = (currentPage - 1) * maxResult;
 
-    // Use 'contains' filter for a partial name match
     const totalProducts = await prisma.reports.count({
       where: {
         name: {
           contains: name,
         },
       },
-    });
-
-    const products = await prisma.reports.findMany({
-      where: {
-        name: {
-          contains: name,
-        },
-      },
-      select: {
-        id: true,
-        invoiceNumber: true,
-        paymentMethod: true,
-        gst: true,
-        spl: true,
-        name: true,
-        date: true,
-      },
-      take: maxResult,
-      skip: skip,
     });
 
     const countByInvoice = await prisma.reports.groupBy({
@@ -367,25 +314,48 @@ async function getByName(req: Request, res: Response) {
       },
     });
 
+    const distinctInvoiceNumbers = countByInvoice.map((item) => item.invoiceNumber);
+
+    const firstProductsByInvoice = await Promise.all(
+      distinctInvoiceNumbers.map(async (invoiceNumber) => {
+        const firstProduct = await prisma.reports.findFirst({
+          where: {
+            invoiceNumber: invoiceNumber,
+          },
+          select: {
+            id: true,
+            invoiceNumber: true,
+            paymentMethod: true,
+            gst: true,
+            spl: true,
+            name: true,
+            date: true,
+          },
+        });
+        return {
+          invoiceNumber: invoiceNumber,
+          _count: countByInvoice.find((item) => item.invoiceNumber === invoiceNumber)?._count._all || 0,
+          firstProduct: firstProduct,
+        };
+      })
+    );
+
     if (totalProducts === 0) {
       return res.status(404).json({
         message: "No products found for the provided name.",
       });
     }
 
-    // Calculate totalPages
     const totalPages = Math.ceil(totalProducts / maxResult);
 
     return res.json({
-      success: products,
+      success: firstProductsByInvoice,
       totalProducts: totalProducts,
-      totalPages: totalPages, // Include totalPages in the response
+      totalPages: totalPages,
       currentPage: currentPage,
       countByInvoice: countByInvoice,
     });
-
   } catch (error) {
-    console.error("An error occurred:", error);
     return res.status(500).json({ error: "Internal server error." });
   }
 }
@@ -477,7 +447,6 @@ async function getPdf(req: Request, res: Response) {
       countByInvoiceNumbers
     });
   } catch (error) {
-    console.error("An error occurred:", error);
     return res.status(500).json({ error: "Internal server error." });
   }
 }
